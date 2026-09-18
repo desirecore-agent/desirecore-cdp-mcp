@@ -2,7 +2,9 @@ import assert from 'node:assert/strict'
 import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
+import { createServer } from 'node:net'
+import { once } from 'node:events'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 
@@ -16,12 +18,13 @@ function run(args, cwd = process.cwd()) {
   return result.stdout
 }
 let client
+let applicationProcess
 try {
   const pack = JSON.parse(run(['pack', '--ignore-scripts', '--json', '--pack-destination', root]))[0]
   for (const file of pack.files) {
     assert.match(
       file.path,
-      /^(dist\/|bin\/|examples\/|package.json$|LICENSE$|NOTICE$|README(?:.zh-CN)?.md$|CHANGELOG.md$|SECURITY.md$)/
+      /^(dist\/|bin\/|examples\/|package.json$|application.json$|LICENSE$|NOTICE$|README(?:.zh-CN)?.md$|CHANGELOG.md$|SECURITY.md$)/
     )
     assert.doesNotMatch(file.path, /(?:^|\/)(?:node_modules|\.env|token|registry\.json)(?:\/|$)/)
   }
@@ -33,6 +36,53 @@ try {
   const help = spawnSync(process.execPath, [entry, '--help'], { cwd: root, encoding: 'utf8', timeout: 10000 })
   assert.equal(help.status, 0, help.stderr)
   assert.match(help.stdout, /desirecore-cdp-mcp/)
+  // 验证真正的 npm bin/shim，不仅是 Node 直接加载兼容入口。
+  assert.match(run(['exec', '--offline', '--', 'desirecore-control', '--help'], root), /DesireCore Control/)
+  const reserve = createServer()
+  reserve.listen(0, '127.0.0.1')
+  await once(reserve, 'listening')
+  const port = reserve.address().port
+  await new Promise((done) => reserve.close(done))
+  const token = 'package-application-test-'.repeat(3)
+  await writeFile(join(root, 'private-token'), token)
+  const applicationEntry = join(root, 'node_modules/desirecore-cdp-mcp/bin/desirecore-control.cjs')
+  applicationProcess = spawn(
+    process.execPath,
+    [
+      applicationEntry,
+      '--registry',
+      join(root, 'empty-registry.json'),
+      '--port',
+      String(port),
+      '--token-file',
+      join(root, 'private-token'),
+    ],
+    { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] }
+  )
+  await new Promise((done, reject) => {
+    const timeout = setTimeout(() => reject(new Error('应用启动超时')), 10000)
+    const fail = (error) => {
+      clearTimeout(timeout)
+      reject(error)
+    }
+    applicationProcess.once('error', fail)
+    applicationProcess.once('exit', (code) => fail(new Error('应用提前退出 ' + code)))
+    applicationProcess.stderr.on('data', (data) => {
+      if (data.toString().includes('本机管理页面')) {
+        clearTimeout(timeout)
+        done()
+      }
+    })
+  })
+  const appUrl = `http://127.0.0.1:${port}`
+  assert.equal((await fetch(appUrl)).status, 200)
+  assert.equal((await fetch(appUrl + '/api/overview')).status, 401)
+  const overview = await (
+    await fetch(appUrl + '/api/overview', { headers: { Authorization: 'Bearer ' + token } })
+  ).json()
+  assert.equal(overview.application.kind, 'app')
+  assert.equal(overview.application.registerInternalMcp, false)
+  assert.deepEqual(overview.instances, [])
   client = new Client({ name: 'package-smoke', version: '1.0.0' })
   await client.connect(
     new StdioClientTransport({
@@ -52,11 +102,18 @@ try {
       packaged: pack.filename,
       files: pack.files.length,
       standalone: true,
+      applicationDashboard: true,
+      internalMcpRegistration: false,
       zeroInstanceStartup: true,
       tools: 5,
     })
   )
 } finally {
+  if (applicationProcess && applicationProcess.exitCode === null && applicationProcess.signalCode === null) {
+    const exited = once(applicationProcess, 'exit')
+    applicationProcess.kill('SIGTERM')
+    await exited
+  }
   await client?.close()
   await rm(root, { recursive: true, force: true })
 }

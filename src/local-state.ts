@@ -69,7 +69,9 @@ export async function readProcessIdentities(pids: number[], signal: AbortSignal)
     ]
   } else if (process.platform === 'darwin') {
     executable = '/bin/ps'
-    args = ['-o', 'pid=,lstart=', '-p', ids.join(',')]
+    // BSD ps 会因无效/超范围的一个 PID 拒绝整个 -p 列表；只查询 PID/启动时间列，再筛选请求集合。
+    // 不读取命令行或环境，避免一个退出的历史实例阻断其余实例发现。
+    args = ['-A', '-o', 'pid=,lstart=']
   } else return result
   try {
     const stdout = await new Promise<string>((done, reject) => {
@@ -79,7 +81,7 @@ export async function readProcessIdentities(pids: number[], signal: AbortSignal)
         {
           encoding: 'utf8',
           timeout: 5000,
-          maxBuffer: 65536,
+          maxBuffer: process.platform === 'darwin' ? 1024 * 1024 : 65536,
           windowsHide: true,
           signal,
           env: { ...process.env, LANG: 'C', LC_ALL: 'C', TZ: 'UTC' },

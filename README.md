@@ -1,17 +1,17 @@
-# DesireCore CDP MCP
+# DesireCore Control
 
 [简体中文](README.zh-CN.md) · [Releases](https://github.com/desirecore-agent/desirecore-cdp-mcp/releases) · [MIT](LICENSE)
 
-An independently maintained MCP server for discovering and debugging multiple local DesireCore desktop instances. It starts with **zero running instances**, never starts/stops DesireCore, and needs no Electron, browser download, tsx, or DesireCore source tree at runtime.
+A **standalone application installed and started by a person**, enabling external agents such as ChatGPT and Codex to control local DesireCore instances. MCP is its outward protocol, not its marketplace category. This is not a tool package for DesireCore's internal agents. It starts with **zero running instances**, never starts/stops DesireCore, registers no internal MCP service, and needs no Electron, browser download, tsx, or DesireCore source tree at runtime.
 
-Source and versions live in **desirecore-agent/desirecore-cdp-mcp**. The DesireCore marketplace catalog lives in **desirecore/registry**, entry `desirecore-cdp-mcp`; it references a fixed release rather than copying this implementation. The predecessor was DesireCore PR #3112.
+Source and versions live in **desirecore-agent/desirecore-cdp-mcp**. The repository and npm package retain their technical names; the application is **DesireCore Control**. The predecessor was DesireCore PR #3112. The draft internal MCP listing has been withdrawn. **The application is not yet listed in the marketplace**: the existing Docker-app contract must first gain native-host application support. Container-local localhost must not be misrepresented as host CDP.
 
 ## Install a release
 
 Requires Node.js **>=22.22.2** and npm. This project distributes a compiled npm tarball through GitHub Releases; do not assume the bare package name has been published to the npm registry.
 
 ```sh
-npm install --global https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.2.0/desirecore-cdp-mcp-1.2.0.tgz
+npm install --global https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.3.0/desirecore-cdp-mcp-1.3.0.tgz
 
 # Standalone HTTP: starts even when no application is running.
 desirecore-cdp-mcp --transport http
@@ -20,7 +20,7 @@ desirecore-cdp-mcp --transport http
 desirecore-cdp-mcp list
 ```
 
-For a checksum-verified installation, download the tarball and `SHA256SUMS` from the same release, verify the tarball's SHA-256 against the published value, then `npm install --global ./desirecore-cdp-mcp-1.2.0.tgz`. Keep the release version pinned. Updating is an explicit installation of a reviewed version, not an automatic download of `latest`.
+For a checksum-verified installation, download the tarball and `SHA256SUMS` from the same release, verify the tarball's SHA-256 against the published value, then `npm install --global ./desirecore-cdp-mcp-1.3.0.tgz`. Keep the release version pinned. Updating is an explicit installation of a reviewed version, not an automatic download of `latest`.
 
 Source development is separate from the application:
 
@@ -34,6 +34,14 @@ npm start
 
 The source package has its own lockfile and test setup. `npm start` uses compiled output; run `npm run build` first. No DesireCore build step is involved.
 
+## Local application dashboard
+
+Run `desirecore-control` (HTTP by default), or `npm start` after a source build. Open the local address printed in the terminal, normally `http://127.0.0.1:9333/`. The dashboard displays instance availability, actual ports, the outward MCP URL and control mode.
+
+The public static page contains no private data. Reading instances still requires the application's token. It stays in request-local page memory, never in URLs, browser storage, logs or configuration examples. The dashboard is readonly and cannot enable control; restart locally with `desirecore-control --allow-control` when intended. Ctrl+C stops this application, not DesireCore.
+
+The following configurations are for **external clients only**, never DesireCore's own MCP service registry. The compatibility `desirecore-cdp-mcp` command defaults to stdio; the human-facing `desirecore-control` application defaults to HTTP.
+
 ## Local MCP clients (stdio)
 
 The CLI defaults to stdio. Configure the package binary directly, not `npm start` (npm's banner is not MCP protocol). A pinned, no-global-install example:
@@ -45,7 +53,7 @@ The CLI defaults to stdio. Configure the package binary directly, not `npm start
       "command": "npx",
       "args": [
         "--yes",
-        "--package=https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.2.0/desirecore-cdp-mcp-1.2.0.tgz",
+        "--package=https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.3.0/desirecore-cdp-mcp-1.3.0.tgz",
         "desirecore-cdp-mcp"
       ]
     }

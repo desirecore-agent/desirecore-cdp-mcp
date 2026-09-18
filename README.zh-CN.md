@@ -1,17 +1,17 @@
-# DesireCore CDP MCP
+# DesireCore Control
 
 [English](README.md) · [版本发布](https://github.com/desirecore-agent/desirecore-cdp-mcp/releases) · [MIT 许可证](LICENSE)
 
-独立维护的 MCP 服务，自动发现本机多个 DesireCore 桌面实例并通过 CDP 调试。**没有任何实例也能启动，不随 DesireCore 启停**。发行包运行时不需要 Electron、浏览器下载、tsx 或 DesireCore 源码。
+供人类安装和启动的**独立应用**，让 ChatGPT、Codex 等外部智能体通过 MCP 控制本机多个 DesireCore 实例。MCP 是对外通信协议，不是市场分类；本应用不是给 DesireCore 内部智能体安装的 MCP 工具。**没有任何实例也能启动，不随 DesireCore 启停**，不创建内部 MCP 服务、不修改智能体工具配置。发行包不需要 Electron、浏览器下载、tsx 或 DesireCore 源码。
 
-源码与版本只在 **desirecore-agent/desirecore-cdp-mcp** 维护；市场目录位于 **desirecore/registry** 的 `desirecore-cdp-mcp` 条目，只引用固定发行版，不复制实现。前身为 DesireCore PR #3112。
+源码与版本只在 **desirecore-agent/desirecore-cdp-mcp** 维护；保留仓库和 npm 包的技术名称，面向用户的应用名为 **DesireCore Control**。前身为 DesireCore PR #3112。原 Registry MCP 条目草稿已撤回，**目前尚未在应用市场上架**：市场现有 `docker-app` 不能正确表达宿主机 Node 应用，需要先适配原生应用的目录与生命周期契约，不能把 Docker 容器中的 localhost 当作宿主机 CDP。
 
 ## 安装发行包
 
 需要 Node.js **>=22.22.2** 和 npm。本项目通过 GitHub Releases 分发编译好的 npm tarball；不要假定同名包已经发布到 npm 公共注册表。
 
 ```powershell
-npm install --global https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.2.0/desirecore-cdp-mcp-1.2.0.tgz
+npm install --global https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.3.0/desirecore-cdp-mcp-1.3.0.tgz
 
 # 独立 HTTP 服务，无实例也能启动
 desirecore-cdp-mcp --transport http
@@ -20,7 +20,7 @@ desirecore-cdp-mcp --transport http
 desirecore-cdp-mcp list
 ```
 
-需要校验后安装时，从同一 Release 下载 tarball 和 `SHA256SUMS`，用 `Get-FileHash -Algorithm SHA256` 或 `sha256sum` 核对摘要，再执行 `npm install --global ./desirecore-cdp-mcp-1.2.0.tgz`。保持版本固定；升级是显式安装已审查的新版本，不自动下载 latest。
+需要校验后安装时，从同一 Release 下载 tarball 和 `SHA256SUMS`，用 `Get-FileHash -Algorithm SHA256` 或 `sha256sum` 核对摘要，再执行 `npm install --global ./desirecore-cdp-mcp-1.3.0.tgz`。保持版本固定；升级是显式安装已审查的新版本，不自动下载 latest。
 
 从源码安装也不依赖应用工程：
 
@@ -34,6 +34,14 @@ npm start
 
 本仓库拥有自己的依赖锁和测试配置。`npm start` 使用编译产物，因此源码安装后须先 build；不需要构建 DesireCore。
 
+## 本机应用管理界面
+
+新版应用命令为 `desirecore-control`（默认 HTTP）；源码安装使用 `npm start`。打开终端显示的本机地址，默认 `http://127.0.0.1:9333/`。界面可查看可用实例、实际端口、外部 MCP 地址与控制状态。
+
+管理页面本身不含私密数据，可直接打开；查看实例仍需输入本应用 token。token 仅在请求期间存在于页面内存，不写 URL、浏览器存储、日志或配置示例。页面只读，不能启用控制；需要时在本机用 `desirecore-control --allow-control` 重启。停止请在终端按 Ctrl+C，不会关闭 DesireCore。
+
+下方 MCP 配置只用于**外部客户端**。不要导入 DesireCore 自身的 MCP 服务列表。兼容命令 `desirecore-cdp-mcp` 默认 stdio，应用命令 `desirecore-control` 默认 HTTP，两者职责不同。
+
 ## 本地 MCP 客户端（stdio）
 
 CLI 默认 stdio。MCP 宿主直接运行包的 bin，不要连接 `npm start` 的 stdout（npm banner 不是 MCP 协议）。无需全局安装的固定版本示例：
@@ -45,7 +53,7 @@ CLI 默认 stdio。MCP 宿主直接运行包的 bin，不要连接 `npm start` �
       "command": "npx",
       "args": [
         "--yes",
-        "--package=https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.2.0/desirecore-cdp-mcp-1.2.0.tgz",
+        "--package=https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.3.0/desirecore-cdp-mcp-1.3.0.tgz",
         "desirecore-cdp-mcp"
       ]
     }

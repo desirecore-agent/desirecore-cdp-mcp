@@ -1,0 +1,12 @@
+{
+  "id": "desirecore-control",
+  "name": "DesireCore Control",
+  "kind": "app",
+  "runtime": "native-node",
+  "audience": "external-agents",
+  "controlProtocol": "mcp",
+  "autoStart": false,
+  "registerInternalMcp": false,
+  "managementPath": "/",
+  "mcpPath": "/mcp"
+}

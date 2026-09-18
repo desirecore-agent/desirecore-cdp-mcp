@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.0
+
+- Define **DesireCore Control** as a standalone application for external agents, not an internal DesireCore MCP service.
+- Add the HTTP-first `desirecore-control` application command and a local, readonly management dashboard.
+- Add a validated application manifest forbidding autostart and internal MCP registration.
+- Preserve MCP/stdio as an outward compatibility protocol; require authentication for instance data and control calls.
+- Withdraw the unpublished internal MCP marketplace draft. Native application marketplace support remains a separate platform prerequisite; no Docker deployment is claimed.
+- Fix macOS batch process discovery when a historical PID is invalid, while reading no command-line/environment data.
+
 ## 1.2.0
 
 - Extract the bridge into the independently maintained MIT-licensed desirecore-agent/desirecore-cdp-mcp repository.

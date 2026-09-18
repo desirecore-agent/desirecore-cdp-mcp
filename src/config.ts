@@ -68,7 +68,7 @@ export const configSchema = {
       maxItems: 16,
       default: [],
       items: { type: 'string', minLength: 1 },
-      description: '允许的精确 HTTP Origin；默认拒绝所有带 Origin 的请求。无 Origin 的原生客户端可用。',
+      description: '额外允许的精确 HTTP Origin；默认仅接受本机同源管理页面或无 Origin 的原生客户端，私密接口仍需认证。',
     },
   },
 } as const satisfies JSONSchema7
