@@ -38,7 +38,7 @@ npm start
 
 新版应用命令为 `desirecore-control`（默认 HTTP）；源码安装使用 `npm start`。打开终端显示的本机地址，默认 `http://127.0.0.1:9333/`。界面可查看可用实例、实际端口、外部 MCP 地址与控制状态。
 
-管理页面本身不含私密数据，可直接打开；查看实例仍需输入本应用 token。token 仅在请求期间存在于页面内存，不写 URL、浏览器存储、日志或配置示例。页面只读，不能启用控制；需要时在本机用 `desirecore-control --allow-control` 重启。停止请在终端按 Ctrl+C，不会关闭 DesireCore。
+管理页面本身不含私密数据，可直接打开；查看实例仍需输入本应用 token。token 仅在请求期间存在于页面内存，不写 URL、浏览器存储、日志或配置示例。实例面板只读，不能启用控制；需要时在本机用 `desirecore-control --allow-control` 重启。停止请在终端按 Ctrl+C，不会关闭 DesireCore。
 
 下方 MCP 配置只用于**外部客户端**。不要导入 DesireCore 自身的 MCP 服务列表。兼容命令 `desirecore-cdp-mcp` 默认 stdio，应用命令 `desirecore-control` 默认 HTTP，两者职责不同。
 
@@ -65,9 +65,34 @@ CLI 默认 stdio。MCP 宿主直接运行包的 bin，不要连接 `npm start` �
 
 ## HTTP 与 ChatGPT
 
-`desirecore-cdp-mcp --transport http` 监听 `http://127.0.0.1:9333/mcp`，所有端点都要求 Bearer token。未提供 `--token-file` 或 `DESIRECORE_MCP_TOKEN` 时，自动生成一次并复用服务自己的凭据：Windows 为 `%LOCALAPPDATA%/DesireCoreMcp/token`；macOS/Linux 为 `$HOME/.desirecore-mcp/token`。
+`desirecore-cdp-mcp --transport http` 监听 `http://127.0.0.1:9333/mcp`，实例数据、健康检查与 MCP 端点要求 Bearer token；静态管理页面不含秘密，隧道管理另需独立的 admin-token。未提供 `--token-file` 或 `DESIRECORE_MCP_TOKEN` 时，自动生成一次并复用服务自己的凭据：Windows 为 `%LOCALAPPDATA%/DesireCoreMcp/token`；macOS/Linux 为 `$HOME/.desirecore-mcp/token`。
 
 不会打印 token；Windows 请检查私有父目录 ACL。显式提供的坏凭据不会回退。HTTP 提供 `POST /mcp`、带认证的 `GET /healthz`；对 `/mcp` 的 GET/DELETE 返回 405。health 只证明 HTTP 存活，不证明 CDP 或 ChatGPT 工具调用成功。
+
+### 应用托管隧道（开发分支，尚未包含在 v1.3.0 发行包）
+
+本功能需使用包含此变更的源码构建。先从 [OpenAI 官方 Releases](https://github.com/openai/tunnel-client/releases) 安装匹配平台的 native `tunnel-client`（按 v0.0.14 参数契约接线；不支持 shell wrapper）。本应用不自动下载或捆绑第三方二进制。
+
+**管理页方式**：`npm start -- --tunnel-client "C:\Tools\OpenAI\tunnel-client.exe"`。打开本机管理页，在“ChatGPT 安全隧道”中输入终端所示 `control-session-…/admin-token` 文件内容，再填入 Tunnel ID 与运行 API key，点击“启动隧道”。也可查看状态或停止。API key 提交后立即清空输入框，不保存到浏览器或磁盘；管理令牌仅在本页面会话内存，点击清除或关闭页面即清除。
+
+**命令行方式**（API key 已由操作者保存在私有文件）：
+
+```powershell
+npm run build
+npm run start:chatgpt -- --tunnel-client "C:\Tools\OpenAI\tunnel-client.exe" --tunnel-id tunnel_0123456789abcdef0123456789abcdef --tunnel-key-file "C:\Private\openai-tunnel-key"
+```
+
+对应已构建应用命令是 `desirecore-control --chatgpt-tunnel --tunnel-id <ID> --tunnel-key-file <文件>`。没有 `--tunnel-key-file` 时读取 `CONTROL_PLANE_API_KEY`；显式 `--chatgpt-tunnel` 且未给 ID 时读取 `CONTROL_PLANE_TUNNEL_ID`。只有环境变量而没有启动开关不会自动启动。`--port` 改动自动同步到隧道的本机 MCP 目标，不用手写 `MCP_SERVER_URL` 或两组认证头。只读/控制权限仍只由应用启动参数决定。
+
+三个凭据不能混用：**MCP token** 给外部工具调用；**admin-token** 只管理本应用隧道；**OpenAI 运行 key** 只交给官方客户端。外部 MCP token 无法访问 `/api/tunnel/*`，admin-token 不会注入隧道。每次应用启动生成独立管理凭据，退出时清理；POSIX 新建为 0600/0700，Windows 继承私有父目录 ACL。不要把任何凭据贴到聊天中。
+
+托管进程只使用正式 `api.openai.com` 与 `main` MCP 通道，不加载用户已有 tunnel profile，不继承其他 OpenAI key、Harpoon 或 Cloudflare 设置；保留 OS 所需环境与 HTTP(S) 代理/CA 环境，loopback 加入 NO_PROXY。需要企业 mTLS、自定义控制面或高级官方 profile 时，使用下面的独立客户端方式。
+
+状态分三层：`state=running` 仅表示子进程运行；`ready=true` 表示从该进程私有 `health-url` 对应的 `/readyz` 观察到 200；**仍须在 ChatGPT 选择 Tunnel、认证选 None，并实际调用 `desirecore_list_instances` 才算接入验收**。`ready=null` 表示尚无有效观测，`ready=false` 表示已收到非就绪响应。Tunnel 必须关联目标 ChatGPT 工作区，操作者需 Tunnels Read + Use 及开发者模式权限，管理页不会代办组织权限。
+
+正常 Ctrl+C 或停止应用会终止本应用启动的隧道，不操作其他 tunnel-client 或 DesireCore。客户端退出不自动重启，应用本地功能继续可用；“停止隧道”只停止客户端，不删除 Platform Tunnel，也不撤销已开始的工具副作用。页面清除凭据不等于停止进程。强杀、断电后可能需要人工清理遗留进程/状态，不宣称 OS 级零孤儿保证。运行诊断可从状态返回的 loopback healthUrl 打开官方 `/ui`；本应用不保存或转发原始子进程日志。
+
+### 独立客户端方式（兼容旧版）
 
 ChatGPT 通过**另行安装、独立运行**的 [OpenAI Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels) 接入，不能直接连接本机地址，也不要公开裸 CDP。隧道上游设为 `http://127.0.0.1:9333/mcp`，通过 `MCP_EXTRA_HEADERS` 和 `MCP_DISCOVERY_EXTRA_HEADERS` 注入本机认证头。Windows 示例见 [examples/tunnel.windows.ps1](examples/tunnel.windows.ps1)，需要操作者提供 Tunnel ID 和具有 Tunnels Read + Use 的专用运行 key。ChatGPT 选择关联的 Tunnel；由本机隧道注入 Authorization 时，连接认证选 None，不再设置会覆盖它的同名认证头。
 

@@ -35,6 +35,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json --checkers 3",
     "start": "node bin/desirecore-control.cjs",
+    "start:chatgpt": "node bin/desirecore-control.cjs --chatgpt-tunnel",
     "start:stdio": "node bin/desirecore-cdp-mcp.cjs --transport stdio",
     "instances": "node bin/desirecore-cdp-mcp.cjs list",
     "token:init": "node bin/desirecore-cdp-mcp.cjs init-token",

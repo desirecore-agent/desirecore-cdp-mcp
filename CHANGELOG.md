@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — ChatGPT Tunnel
+
+- Add explicit application-managed OpenAI `tunnel-client` startup with `--chatgpt-tunnel`, a fixed local MCP binding, automatic runtime/discovery authentication headers, and an OS-assigned health port.
+- Add a human-only dashboard for tunnel configuration, start, stop and readiness observations, protected by a separate per-application admin token; no tunnel-management MCP tools are published.
+- Keep runtime API keys in request/child-process memory or read an operator-selected file; do not persist them or forward raw child logs. Ignore unrelated inherited tunnel profiles, extra channels and API keys.
+- Bound process transitions, refuse duplicate starts, reap owned children on normal application shutdown and retain local MCP availability after tunnel failures. Readiness never claims ChatGPT end-to-end acceptance.
+
 ## 1.3.0
 
 - Define **DesireCore Control** as a standalone application for external agents, not an internal DesireCore MCP service.

@@ -10,6 +10,7 @@ export const APPLICATION_HTML = `<!doctype html>
 <section><h2>本机实例</h2><p>只读刷新，不会启动、停止或自动选择任何 DesireCore 实例。</p><div id="instances"></div></section>
 <section><h2>连接外部智能体</h2><p>外部客户端使用下列端点；ChatGPT 的隧道转发到此端点。不要将本应用注册到 DesireCore 内部 MCP 列表。</p><pre id="config">连接后显示本机地址与权限状态。令牌不会显示在这里。</pre>
 <p>默认只读。需要输入或 JavaScript 控制时，在本机终端重启并显式添加 <code>--allow-control</code>。此页面不能远程开启控制。</p></section>
+<!-- TUNNEL -->
 <footer>退出本应用不关闭 DesireCore；关闭所有 DesireCore 实例也不退出本应用。</footer></main><script src="/app.js" defer></script></body></html>`
 export const APPLICATION_CSS = `:root{font-family:system-ui,sans-serif;color:#202734;background:#f4f6fa}body{margin:0}main{max-width:960px;margin:40px auto;padding:0 24px}header{margin-bottom:32px}h1{font-size:36px;letter-spacing:-1px}h2{font-size:20px;margin-top:0}.eyebrow{font-size:12px;letter-spacing:2px;color:#526078}section{background:white;padding:24px;border:1px solid #dde3eb;border-radius:12px;margin-bottom:20px}p{line-height:1.6}label{display:block;margin-bottom:8px}.row{display:flex;gap:12px;flex-wrap:wrap}input{flex:1;min-width:180px;border:1px solid #a7b3c5;border-radius:6px;padding:10px}button{border:1px solid #a7b3c5;border-radius:6px;padding:10px 16px;cursor:pointer;background:#eef2f8}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f4f8;padding:16px;border-radius:8px}article{padding:16px 0;border-top:1px solid #e4e8ef}article p{margin:4px 0;overflow-wrap:anywhere}footer{color:#526078;font-size:13px;margin:32px 0}`
 export const APPLICATION_JS = `(() => {
