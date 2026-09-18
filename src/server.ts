@@ -9,6 +9,8 @@ import { ToolService } from './tools.js'
 import { VERSION } from './version.js'
 import { APPLICATION } from './application.js'
 import { APPLICATION_HTML, APPLICATION_JS, APPLICATION_CSS } from './application-ui.js'
+import type { TunnelControl } from './tunnel.js'
+import { TUNNEL_HTML, TUNNEL_JS } from './tunnel-ui.js'
 
 export const MAX_REQUEST_BYTES = 128 * 1024
 
@@ -96,7 +98,12 @@ export interface HttpHandle {
   close: () => Promise<void>
 }
 
-export async function startHttp(service: ToolService, config: BridgeConfig, token: string): Promise<HttpHandle> {
+export async function startHttp(
+  service: ToolService,
+  config: BridgeConfig,
+  token: string,
+  tunnel?: TunnelControl
+): Promise<HttpHandle> {
   if (!/^[A-Za-z0-9_-]{32,256}$/.test(token)) throw new Error('HTTP token 无效')
   const mcps = new Set<Server>()
   const responses = new Set<ServerResponse>()
@@ -110,9 +117,9 @@ export async function startHttp(service: ToolService, config: BridgeConfig, toke
     // 无敏感数据的管理页面允许本机打开；实例清单、配置及 MCP 仍必须通过 Bearer 鉴权。
     const asset =
       req.url === '/'
-        ? [APPLICATION_HTML, 'text/html']
+        ? [APPLICATION_HTML.replace('<!-- TUNNEL -->', TUNNEL_HTML), 'text/html']
         : req.url === '/app.js'
-          ? [APPLICATION_JS, 'text/javascript']
+          ? [APPLICATION_JS + '\n' + TUNNEL_JS, 'text/javascript']
           : req.url === '/app.css'
             ? [APPLICATION_CSS, 'text/css']
             : undefined
@@ -130,6 +137,62 @@ export async function startHttp(service: ToolService, config: BridgeConfig, toke
         'X-Frame-Options': 'DENY',
       })
       res.end(asset[0])
+      return
+    }
+    if (req.url?.startsWith('/api/tunnel/')) {
+      // 管理权限独立于外部 MCP；额外 Origin 白名单不能扩展此管理面。
+      if (
+        !tunnel ||
+        (req.headers.origin !== undefined && req.headers.origin !== `http://${req.headers.host}`) ||
+        req.headers['sec-fetch-site'] === 'cross-site'
+      ) {
+        reply(res, 403, '隧道管理仅允许本机同源访问')
+        return
+      }
+      const count = req.rawHeaders.filter((h, i) => i % 2 === 0 && h.toLowerCase() === 'authorization').length
+      if (count !== 1 || !authorized(req.headers.authorization, tunnel.token)) {
+        reply(res, 401, '需要本次应用独立的 admin-token，不接受 MCP token')
+        return
+      }
+      const route = req.url
+      if (!['/api/tunnel/status', '/api/tunnel/start', '/api/tunnel/stop'].includes(route)) {
+        reply(res, 404, '管理端点不存在')
+        return
+      }
+      if (req.method !== (route.endsWith('/status') ? 'GET' : 'POST')) {
+        reply(res, 405, '管理请求方法错误')
+        return
+      }
+      if (responses.size >= 16) {
+        reply(res, 503, '请求过多')
+        return
+      }
+      responses.add(res)
+      const timer = setTimeout(() => {
+        reply(res, 408, '管理请求超时')
+        req.destroy()
+      }, 15000)
+      res.once('close', () => {
+        clearTimeout(timer)
+        responses.delete(res)
+      })
+      void (async () => {
+        const value = route.endsWith('/status')
+          ? await tunnel.manager.status()
+          : route.endsWith('/start')
+            ? await tunnel.manager.start(await readBody(req))
+            : await tunnel.manager.stop()
+        if (!res.destroyed && !res.headersSent) {
+          res.writeHead(200, { 'Content-Type': 'application/json', 'X-Content-Type-Options': 'nosniff' })
+          res.end(JSON.stringify(value))
+        }
+      })().catch((error: unknown) =>
+        reply(
+          res,
+          error instanceof RequestError ? error.status : 400,
+          error instanceof Error ? error.message.slice(0, 400) : '隧道操作失败'
+        )
+      )
       return
     }
     const authCount = req.rawHeaders.filter(
@@ -254,6 +317,7 @@ export async function startHttp(service: ToolService, config: BridgeConfig, toke
   const address = http.address()
   if (!address || typeof address === 'string') throw new Error('无法获取 MCP 监听端口')
   port = address.port
+  tunnel?.manager.bindMcpUrl(`http://127.0.0.1:${port}/mcp`)
   return {
     url: `http://127.0.0.1:${port}/mcp`,
     close: async () => {

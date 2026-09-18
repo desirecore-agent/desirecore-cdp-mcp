@@ -4,14 +4,14 @@
 
 A **standalone application installed and started by a person**, enabling external agents such as ChatGPT and Codex to control local DesireCore instances. MCP is its outward protocol, not its marketplace category. This is not a tool package for DesireCore's internal agents. It starts with **zero running instances**, never starts/stops DesireCore, registers no internal MCP service, and needs no Electron, browser download, tsx, or DesireCore source tree at runtime.
 
-Source and versions live in **desirecore-agent/desirecore-cdp-mcp**. The repository and npm package retain their technical names; the application is **DesireCore Control**. The predecessor was DesireCore PR #3112. The draft internal MCP listing has been withdrawn. **The application is not yet listed in the marketplace**: the existing Docker-app contract must first gain native-host application support. Container-local localhost must not be misrepresented as host CDP.
+Source and versions live in **desirecore-agent/desirecore-cdp-mcp**. The repository and npm package retain their technical names; the application is **DesireCore Control**. The predecessor was DesireCore PR #3112. The application listing is maintained in [DesireCore Registry](https://github.com/desirecore/registry) as `native-app` and requires a native-application-aware client. Catalog publication, client compatibility and this application's release are separate facts; check the merged listing and its minimum client version. The internal MCP draft has been withdrawn. Container-local localhost must not be misrepresented as host CDP.
 
 ## Install a release
 
 Requires Node.js **>=22.22.2** and npm. This project distributes a compiled npm tarball through GitHub Releases; do not assume the bare package name has been published to the npm registry.
 
 ```sh
-npm install --global https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.3.0/desirecore-cdp-mcp-1.3.0.tgz
+npm install --global https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.4.0/desirecore-cdp-mcp-1.4.0.tgz
 
 # Standalone HTTP: starts even when no application is running.
 desirecore-cdp-mcp --transport http
@@ -20,7 +20,7 @@ desirecore-cdp-mcp --transport http
 desirecore-cdp-mcp list
 ```
 
-For a checksum-verified installation, download the tarball and `SHA256SUMS` from the same release, verify the tarball's SHA-256 against the published value, then `npm install --global ./desirecore-cdp-mcp-1.3.0.tgz`. Keep the release version pinned. Updating is an explicit installation of a reviewed version, not an automatic download of `latest`.
+For a checksum-verified installation, download the tarball and `SHA256SUMS` from the same release, verify the tarball's SHA-256 against the published value, then `npm install --global ./desirecore-cdp-mcp-1.4.0.tgz`. Keep the release version pinned. Updating is an explicit installation of a reviewed version, not an automatic download of `latest`.
 
 Source development is separate from the application:
 
@@ -38,7 +38,7 @@ The source package has its own lockfile and test setup. `npm start` uses compile
 
 Run `desirecore-control` (HTTP by default), or `npm start` after a source build. Open the local address printed in the terminal, normally `http://127.0.0.1:9333/`. The dashboard displays instance availability, actual ports, the outward MCP URL and control mode.
 
-The public static page contains no private data. Reading instances still requires the application's token. It stays in request-local page memory, never in URLs, browser storage, logs or configuration examples. The dashboard is readonly and cannot enable control; restart locally with `desirecore-control --allow-control` when intended. Ctrl+C stops this application, not DesireCore.
+The public static page contains no private data. Reading instances still requires the application's token. It stays in request-local page memory, never in URLs, browser storage, logs or configuration examples. The instance panel is readonly and cannot enable control; restart locally with `desirecore-control --allow-control` when intended. Ctrl+C stops this application, not DesireCore.
 
 The following configurations are for **external clients only**, never DesireCore's own MCP service registry. The compatibility `desirecore-cdp-mcp` command defaults to stdio; the human-facing `desirecore-control` application defaults to HTTP.
 
@@ -53,7 +53,7 @@ The CLI defaults to stdio. Configure the package binary directly, not `npm start
       "command": "npx",
       "args": [
         "--yes",
-        "--package=https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.3.0/desirecore-cdp-mcp-1.3.0.tgz",
+        "--package=https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.4.0/desirecore-cdp-mcp-1.4.0.tgz",
         "desirecore-cdp-mcp"
       ]
     }
@@ -65,12 +65,37 @@ For an already installed package, use `node <absolute-install-directory>/bin/des
 
 ## HTTP and ChatGPT
 
-`desirecore-cdp-mcp --transport http` listens on `http://127.0.0.1:9333/mcp`. All endpoints require a Bearer token. If neither `--token-file` nor `DESIRECORE_MCP_TOKEN` is supplied, a private local token is generated once and reused:
+`desirecore-cdp-mcp --transport http` listens on `http://127.0.0.1:9333/mcp`. Instance data, health and MCP endpoints require a Bearer token; static dashboard assets contain no secrets. Tunnel administration uses a separate admin token. If neither `--token-file` nor `DESIRECORE_MCP_TOKEN` is supplied, a private local token is generated once and reused:
 
 - Windows: `%LOCALAPPDATA%/DesireCoreMcp/token`.
 - macOS/Linux: `$HOME/.desirecore-mcp/token`.
 
 The token is not printed. Verify the Windows parent directory ACL. An invalid explicitly supplied credential fails rather than falling back. HTTP provides `POST /mcp` and authenticated `GET /healthz`; GET/DELETE on `/mcp` return 405. Health proves HTTP liveness, not a successful CDP call.
+
+### Application-managed tunnel (since 1.4.0)
+
+Install version 1.4.0 or a later reviewed release. Install the platform-specific native `tunnel-client` from [official Releases](https://github.com/openai/tunnel-client/releases) first (wired against the v0.0.14 CLI contract; shell wrappers are unsupported). This application does not download or bundle third-party executables.
+
+**Dashboard:** run `npm start -- --tunnel-client /absolute/path/to/tunnel-client`. In the ChatGPT Tunnel panel, enter the contents of the per-run `control-session-…/admin-token` file printed by the application, then the Tunnel ID and runtime API key. Start, inspect and stop the tunnel there. The API key input is cleared on submission and is never persisted in browser storage or on disk. The admin token remains only in page-session memory until cleared or the page is closed.
+
+**CLI with an operator-managed private key file:**
+
+```sh
+npm run build
+npm run start:chatgpt -- --tunnel-client /absolute/path/to/tunnel-client --tunnel-id tunnel_0123456789abcdef0123456789abcdef --tunnel-key-file /private/openai-tunnel-key
+```
+
+Equivalent application command: `desirecore-control --chatgpt-tunnel --tunnel-id <ID> --tunnel-key-file <file>`. Without a key file, use `CONTROL_PLANE_API_KEY`. With explicit `--chatgpt-tunnel`, `CONTROL_PLANE_TUNNEL_ID` supplies an omitted ID. Environment variables alone never start a tunnel. The local MCP URL follows `--port`, and runtime/discovery Bearer headers are injected automatically. Existing control permissions cannot be changed through the dashboard.
+
+Keep three credentials separate: the **MCP token** permits outward tool calls, the per-application **admin-token** manages the tunnel, and the **OpenAI runtime key** goes only to the official child process. MCP credentials cannot access `/api/tunnel/*`; admin credentials are never sent to the child. Per-run files are removed on shutdown and created privately on POSIX; verify inherited Windows directory ACLs. Never paste credentials into chat.
+
+Managed mode fixes the production `api.openai.com` control plane and the `main` MCP channel. It does not load existing profiles or inherit unrelated OpenAI keys, Harpoon or Cloudflare settings. Necessary OS and HTTP(S) proxy/CA environment is preserved; loopback is included in NO_PROXY. Enterprise mTLS, custom control planes and advanced profiles should use the independently managed client below.
+
+Readiness is layered: `state=running` means a child exists; `ready=true` means its private health URL returned HTTP 200 from `/readyz`; `null` means no valid observation yet and `false` means a nonready response. **Select Tunnel with authentication None in ChatGPT and actually call `desirecore_list_instances` to verify end-to-end use.** The Tunnel must be associated with the target workspace, and the operator needs Tunnels Read + Use and appropriate developer-mode access. The dashboard does not create Platform tunnels or grant workspace permissions.
+
+Normal Ctrl+C/application shutdown reaps only the owned child, never DesireCore or unrelated clients. Unexpected exits are not automatically restarted and leave local application functions available. Stopping the child does not delete the Platform tunnel or undo tool side effects. Clearing page credentials does not stop the child. Forced termination or power loss can require manual orphan/state cleanup; no OS-level zero-orphan guarantee is claimed. Use the reported loopback healthUrl plus `/ui` for official diagnostics; raw child logs are neither retained nor forwarded by this application.
+
+### Independently managed client (legacy compatible)
 
 ChatGPT uses a **separately installed and running** [OpenAI Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels), not a public raw CDP port. Configure its local upstream to `http://127.0.0.1:9333/mcp` and inject this server's local token using `MCP_EXTRA_HEADERS` and `MCP_DISCOVERY_EXTRA_HEADERS`. [examples/tunnel.windows.ps1](examples/tunnel.windows.ps1) requires an operator-provided Tunnel ID and dedicated runtime key (Tunnels Read + Use). In ChatGPT select the associated Tunnel and authentication None when the local client injects Authorization. Do not configure a conflicting forwarded Authorization header.
 

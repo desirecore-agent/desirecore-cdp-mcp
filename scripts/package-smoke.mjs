@@ -36,6 +36,7 @@ try {
   const help = spawnSync(process.execPath, [entry, '--help'], { cwd: root, encoding: 'utf8', timeout: 10000 })
   assert.equal(help.status, 0, help.stderr)
   assert.match(help.stdout, /desirecore-cdp-mcp/)
+  assert.match(help.stdout, /--chatgpt-tunnel/)
   // 验证真正的 npm bin/shim，不仅是 Node 直接加载兼容入口。
   assert.match(run(['exec', '--offline', '--', 'desirecore-control', '--help'], root), /DesireCore Control/)
   const reserve = createServer()
@@ -57,7 +58,11 @@ try {
       '--token-file',
       join(root, 'private-token'),
     ],
-    { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] }
+    {
+      cwd: root,
+      env: { ...process.env, HOME: root, USERPROFILE: root, LOCALAPPDATA: root },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }
   )
   await new Promise((done, reject) => {
     const timeout = setTimeout(() => reject(new Error('应用启动超时')), 10000)
@@ -76,6 +81,11 @@ try {
   })
   const appUrl = `http://127.0.0.1:${port}`
   assert.equal((await fetch(appUrl)).status, 200)
+  assert.match(await (await fetch(appUrl)).text(), /ChatGPT 安全隧道/)
+  assert.equal(
+    (await fetch(appUrl + '/api/tunnel/status', { headers: { Authorization: 'Bearer ' + token } })).status,
+    401
+  )
   assert.equal((await fetch(appUrl + '/api/overview')).status, 401)
   const overview = await (
     await fetch(appUrl + '/api/overview', { headers: { Authorization: 'Bearer ' + token } })

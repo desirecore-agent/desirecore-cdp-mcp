@@ -1,11 +1,12 @@
 import { randomBytes } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, isAbsolute } from 'node:path'
 import { homedir } from 'node:os'
 import Ajv from 'ajv'
 import type { JSONSchema7 } from 'json-schema'
 import type { FromSchema } from 'json-schema-to-ts'
 import { expandHome } from './local-state.js'
+import { tunnelStartSchema } from './tunnel.js'
 
 /** 本机启动配置是权限边界；MCP 请求不能修改这些字段。 */
 export const configSchema = {
@@ -15,6 +16,20 @@ export const configSchema = {
   required: ['transport', 'port', 'timeoutMs', 'allowControl', 'allowedOrigins'],
   not: { required: ['home', 'cdpPort'] },
   properties: {
+    chatgptTunnel: { type: 'boolean', description: '显式请求应用启动后托管 ChatGPT 官方隧道；不设置时保持手动启动。' },
+    tunnelClient: {
+      type: 'string',
+      minLength: 1,
+      maxLength: 2048,
+      description: '本机官方 tunnel-client 可执行文件绝对路径；缺省使用 PATH 中的 tunnel-client，不接受 shell 命令。',
+    },
+    tunnelId: tunnelStartSchema.properties.tunnelId,
+    tunnelKeyFile: {
+      type: 'string',
+      minLength: 1,
+      maxLength: 2048,
+      description: '操作者保存的 Tunnels Read + Use key 文件；优先于 CONTROL_PLANE_API_KEY，不在参数中写明文 key。',
+    },
     registryPath: {
       type: 'string',
       minLength: 1,
@@ -80,6 +95,21 @@ const validate = ajv.compile<BridgeConfig>(configSchema)
 
 export function validateConfig(value: unknown): BridgeConfig {
   if (!validate(value)) throw new Error(`MCP 配置无效：${ajv.errorsText(validate.errors)}`)
+  if (
+    value.transport !== 'http' &&
+    (value.chatgptTunnel || value.tunnelClient || value.tunnelId || value.tunnelKeyFile)
+  )
+    throw new Error('ChatGPT 隧道仅用于 HTTP 应用入口，不能用于 stdio')
+  if (
+    value.tunnelClient &&
+    value.tunnelClient !== 'tunnel-client' &&
+    (!isAbsolute(value.tunnelClient) ||
+      /[\r\n\0]/.test(value.tunnelClient) ||
+      /\.(?:cmd|bat|ps1)$/i.test(value.tunnelClient))
+  )
+    throw new Error('--tunnel-client 必须是官方 native 可执行文件的绝对路径')
+  if (value.chatgptTunnel && !value.tunnelId)
+    throw new Error('--chatgpt-tunnel 需要 --tunnel-id 或 CONTROL_PLANE_TUNNEL_ID')
   for (const origin of value.allowedOrigins) {
     const parsed = new URL(origin)
     if (!['http:', 'https:'].includes(parsed.protocol) || parsed.origin !== origin) {
@@ -97,6 +127,10 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
     const flag = argv[index]
     if (flag !== '--allow-origin' && seen.has(flag)) throw new Error(`重复参数：${flag}`)
     seen.add(flag)
+    if (flag === '--chatgpt-tunnel') {
+      values.chatgptTunnel = true
+      continue
+    }
     if (flag === '--allow-control') {
       values.allowControl = true
       continue
@@ -104,6 +138,15 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
     const next = argv[++index]
     if (!next || next.startsWith('--')) throw new Error(`${flag} 缺少参数值`)
     switch (flag) {
+      case '--tunnel-client':
+        values.tunnelClient = next === 'tunnel-client' ? next : expandHome(next)
+        break
+      case '--tunnel-id':
+        values.tunnelId = next
+        break
+      case '--tunnel-key-file':
+        values.tunnelKeyFile = expandHome(next)
+        break
       case '--home':
         values.home = expandHome(next)
         break
@@ -136,6 +179,8 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   if (values.registryPath === undefined && env.DESIRECORE_INSTANCES_REGISTRY_PATH) {
     values.registryPath = expandHome(env.DESIRECORE_INSTANCES_REGISTRY_PATH)
   }
+  if (values.chatgptTunnel && values.tunnelId === undefined && env.CONTROL_PLANE_TUNNEL_ID)
+    values.tunnelId = env.CONTROL_PLANE_TUNNEL_ID
   return validateConfig(values)
 }
 
