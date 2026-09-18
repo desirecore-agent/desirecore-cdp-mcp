@@ -4,14 +4,14 @@
 
 A **standalone application installed and started by a person**, enabling external agents such as ChatGPT and Codex to control local DesireCore instances. MCP is its outward protocol, not its marketplace category. This is not a tool package for DesireCore's internal agents. It starts with **zero running instances**, never starts/stops DesireCore, registers no internal MCP service, and needs no Electron, browser download, tsx, or DesireCore source tree at runtime.
 
-Source and versions live in **desirecore-agent/desirecore-cdp-mcp**. The repository and npm package retain their technical names; the application is **DesireCore Control**. The predecessor was DesireCore PR #3112. The draft internal MCP listing has been withdrawn. **The application is not yet listed in the marketplace**: the existing Docker-app contract must first gain native-host application support. Container-local localhost must not be misrepresented as host CDP.
+Source and versions live in **desirecore-agent/desirecore-cdp-mcp**. The repository and npm package retain their technical names; the application is **DesireCore Control**. The predecessor was DesireCore PR #3112. The application listing is maintained in [DesireCore Registry](https://github.com/desirecore/registry) as `native-app` and requires a native-application-aware client. Catalog publication, client compatibility and this application's release are separate facts; check the merged listing and its minimum client version. The internal MCP draft has been withdrawn. Container-local localhost must not be misrepresented as host CDP.
 
 ## Install a release
 
 Requires Node.js **>=22.22.2** and npm. This project distributes a compiled npm tarball through GitHub Releases; do not assume the bare package name has been published to the npm registry.
 
 ```sh
-npm install --global https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.3.0/desirecore-cdp-mcp-1.3.0.tgz
+npm install --global https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.4.0/desirecore-cdp-mcp-1.4.0.tgz
 
 # Standalone HTTP: starts even when no application is running.
 desirecore-cdp-mcp --transport http
@@ -20,7 +20,7 @@ desirecore-cdp-mcp --transport http
 desirecore-cdp-mcp list
 ```
 
-For a checksum-verified installation, download the tarball and `SHA256SUMS` from the same release, verify the tarball's SHA-256 against the published value, then `npm install --global ./desirecore-cdp-mcp-1.3.0.tgz`. Keep the release version pinned. Updating is an explicit installation of a reviewed version, not an automatic download of `latest`.
+For a checksum-verified installation, download the tarball and `SHA256SUMS` from the same release, verify the tarball's SHA-256 against the published value, then `npm install --global ./desirecore-cdp-mcp-1.4.0.tgz`. Keep the release version pinned. Updating is an explicit installation of a reviewed version, not an automatic download of `latest`.
 
 Source development is separate from the application:
 
@@ -53,7 +53,7 @@ The CLI defaults to stdio. Configure the package binary directly, not `npm start
       "command": "npx",
       "args": [
         "--yes",
-        "--package=https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.3.0/desirecore-cdp-mcp-1.3.0.tgz",
+        "--package=https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.4.0/desirecore-cdp-mcp-1.4.0.tgz",
         "desirecore-cdp-mcp"
       ]
     }
@@ -72,9 +72,9 @@ For an already installed package, use `node <absolute-install-directory>/bin/des
 
 The token is not printed. Verify the Windows parent directory ACL. An invalid explicitly supplied credential fails rather than falling back. HTTP provides `POST /mcp` and authenticated `GET /healthz`; GET/DELETE on `/mcp` return 405. Health proves HTTP liveness, not a successful CDP call.
 
-### Application-managed tunnel (development branch, not in the v1.3.0 release)
+### Application-managed tunnel (since 1.4.0)
 
-Build a source checkout containing this change. Install the platform-specific native `tunnel-client` from [official Releases](https://github.com/openai/tunnel-client/releases) first (wired against the v0.0.14 CLI contract; shell wrappers are unsupported). This application does not download or bundle third-party executables.
+Install version 1.4.0 or a later reviewed release. Install the platform-specific native `tunnel-client` from [official Releases](https://github.com/openai/tunnel-client/releases) first (wired against the v0.0.14 CLI contract; shell wrappers are unsupported). This application does not download or bundle third-party executables.
 
 **Dashboard:** run `npm start -- --tunnel-client /absolute/path/to/tunnel-client`. In the ChatGPT Tunnel panel, enter the contents of the per-run `control-session-…/admin-token` file printed by the application, then the Tunnel ID and runtime API key. Start, inspect and stop the tunnel there. The API key input is cleared on submission and is never persisted in browser storage or on disk. The admin token remains only in page-session memory until cleared or the page is closed.
 

@@ -1,6 +1,6 @@
 {
   "name": "desirecore-cdp-mcp",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "DesireCore Control: standalone application for external agents to control local DesireCore instances over MCP/CDP",
   "type": "module",
   "license": "MIT",

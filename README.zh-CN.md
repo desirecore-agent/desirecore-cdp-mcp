@@ -4,14 +4,14 @@
 
 供人类安装和启动的**独立应用**，让 ChatGPT、Codex 等外部智能体通过 MCP 控制本机多个 DesireCore 实例。MCP 是对外通信协议，不是市场分类；本应用不是给 DesireCore 内部智能体安装的 MCP 工具。**没有任何实例也能启动，不随 DesireCore 启停**，不创建内部 MCP 服务、不修改智能体工具配置。发行包不需要 Electron、浏览器下载、tsx 或 DesireCore 源码。
 
-源码与版本只在 **desirecore-agent/desirecore-cdp-mcp** 维护；保留仓库和 npm 包的技术名称，面向用户的应用名为 **DesireCore Control**。前身为 DesireCore PR #3112。原 Registry MCP 条目草稿已撤回，**目前尚未在应用市场上架**：市场现有 `docker-app` 不能正确表达宿主机 Node 应用，需要先适配原生应用的目录与生命周期契约，不能把 Docker 容器中的 localhost 当作宿主机 CDP。
+源码与版本只在 **desirecore-agent/desirecore-cdp-mcp** 维护；保留仓库和 npm 包的技术名称，面向用户的应用名为 **DesireCore Control**。前身为 DesireCore PR #3112。市场应用条目由 [DesireCore Registry](https://github.com/desirecore/registry) 维护；只能以 `native-app` 收录，并要求支持原生应用的客户端。市场上架、客户端版本与本应用发行是独立状态，以对应仓库的已合并条目及最低客户端版本为准。旧的内部 MCP 草稿已撤回，不把 Docker 容器中的 localhost 当作宿主机 CDP。
 
 ## 安装发行包
 
 需要 Node.js **>=22.22.2** 和 npm。本项目通过 GitHub Releases 分发编译好的 npm tarball；不要假定同名包已经发布到 npm 公共注册表。
 
 ```powershell
-npm install --global https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.3.0/desirecore-cdp-mcp-1.3.0.tgz
+npm install --global https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.4.0/desirecore-cdp-mcp-1.4.0.tgz
 
 # 独立 HTTP 服务，无实例也能启动
 desirecore-cdp-mcp --transport http
@@ -20,7 +20,7 @@ desirecore-cdp-mcp --transport http
 desirecore-cdp-mcp list
 ```
 
-需要校验后安装时，从同一 Release 下载 tarball 和 `SHA256SUMS`，用 `Get-FileHash -Algorithm SHA256` 或 `sha256sum` 核对摘要，再执行 `npm install --global ./desirecore-cdp-mcp-1.3.0.tgz`。保持版本固定；升级是显式安装已审查的新版本，不自动下载 latest。
+需要校验后安装时，从同一 Release 下载 tarball 和 `SHA256SUMS`，用 `Get-FileHash -Algorithm SHA256` 或 `sha256sum` 核对摘要，再执行 `npm install --global ./desirecore-cdp-mcp-1.4.0.tgz`。保持版本固定；升级是显式安装已审查的新版本，不自动下载 latest。
 
 从源码安装也不依赖应用工程：
 
@@ -53,7 +53,7 @@ CLI 默认 stdio。MCP 宿主直接运行包的 bin，不要连接 `npm start` �
       "command": "npx",
       "args": [
         "--yes",
-        "--package=https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.3.0/desirecore-cdp-mcp-1.3.0.tgz",
+        "--package=https://github.com/desirecore-agent/desirecore-cdp-mcp/releases/download/v1.4.0/desirecore-cdp-mcp-1.4.0.tgz",
         "desirecore-cdp-mcp"
       ]
     }
@@ -69,9 +69,9 @@ CLI 默认 stdio。MCP 宿主直接运行包的 bin，不要连接 `npm start` �
 
 不会打印 token；Windows 请检查私有父目录 ACL。显式提供的坏凭据不会回退。HTTP 提供 `POST /mcp`、带认证的 `GET /healthz`；对 `/mcp` 的 GET/DELETE 返回 405。health 只证明 HTTP 存活，不证明 CDP 或 ChatGPT 工具调用成功。
 
-### 应用托管隧道（开发分支，尚未包含在 v1.3.0 发行包）
+### 应用托管隧道（1.4.0 起）
 
-本功能需使用包含此变更的源码构建。先从 [OpenAI 官方 Releases](https://github.com/openai/tunnel-client/releases) 安装匹配平台的 native `tunnel-client`（按 v0.0.14 参数契约接线；不支持 shell wrapper）。本应用不自动下载或捆绑第三方二进制。
+安装 1.4.0 或更新的已审查发行包。先从 [OpenAI 官方 Releases](https://github.com/openai/tunnel-client/releases) 安装匹配平台的 native `tunnel-client`（按 v0.0.14 参数契约接线；不支持 shell wrapper）。本应用不自动下载或捆绑第三方二进制。
 
 **管理页方式**：`npm start -- --tunnel-client "C:\Tools\OpenAI\tunnel-client.exe"`。打开本机管理页，在“ChatGPT 安全隧道”中输入终端所示 `control-session-…/admin-token` 文件内容，再填入 Tunnel ID 与运行 API key，点击“启动隧道”。也可查看状态或停止。API key 提交后立即清空输入框，不保存到浏览器或磁盘；管理令牌仅在本页面会话内存，点击清除或关闭页面即清除。
 

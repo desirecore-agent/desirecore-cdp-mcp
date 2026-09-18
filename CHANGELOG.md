@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — ChatGPT Tunnel
+## 1.4.0 — ChatGPT Tunnel
 
 - Add explicit application-managed OpenAI `tunnel-client` startup with `--chatgpt-tunnel`, a fixed local MCP binding, automatic runtime/discovery authentication headers, and an OS-assigned health port.
 - Add a human-only dashboard for tunnel configuration, start, stop and readiness observations, protected by a separate per-application admin token; no tunnel-management MCP tools are published.
