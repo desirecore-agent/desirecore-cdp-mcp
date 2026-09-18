@@ -1,0 +1,61 @@
+{
+  "name": "desirecore-cdp-mcp",
+  "version": "1.2.0",
+  "description": "Standalone MCP server for discovering and debugging local DesireCore desktop instances over CDP",
+  "type": "module",
+  "license": "MIT",
+  "author": "DesireCore contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/desirecore-agent/desirecore-cdp-mcp.git"
+  },
+  "homepage": "https://github.com/desirecore-agent/desirecore-cdp-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/desirecore-agent/desirecore-cdp-mcp/issues"
+  },
+  "engines": {
+    "node": ">=22.22.2"
+  },
+  "bin": {
+    "desirecore-cdp-mcp": "bin/desirecore-cdp-mcp.cjs"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "examples/",
+    "LICENSE",
+    "NOTICE",
+    "README.md",
+    "README.zh-CN.md",
+    "CHANGELOG.md",
+    "SECURITY.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json --checkers 3",
+    "start": "node bin/desirecore-cdp-mcp.cjs --transport http",
+    "start:stdio": "node bin/desirecore-cdp-mcp.cjs --transport stdio",
+    "instances": "node bin/desirecore-cdp-mcp.cjs list",
+    "token:init": "node bin/desirecore-cdp-mcp.cjs init-token",
+    "dev": "tsx src/cli.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit --checkers 3",
+    "test": "vitest run --config vitest.config.ts",
+    "test:package": "node scripts/package-smoke.mjs",
+    "pack:release": "npm run build && npm pack --ignore-scripts",
+    "format:check": "prettier --check src test scripts bin *.json *.ts *.md examples .github"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "ajv": "8.20.0",
+    "ws": "8.21.3"
+  },
+  "devDependencies": {
+    "@types/json-schema": "7.0.15",
+    "@types/node": "26.3.0",
+    "@types/ws": "8.18.1",
+    "json-schema-to-ts": "3.1.1",
+    "typescript": "7.0.2",
+    "tsx": "4.23.12",
+    "vitest": "4.1.11",
+    "prettier": "3.8.3"
+  }
+}

@@ -1,0 +1,11 @@
+DesireCore CDP MCP
+
+This repository contains the standalone CDP-to-MCP bridge developed for DesireCore.
+The bridge is released separately under the MIT License at the project owner's direction.
+Its lineage is scripts/cdp-mcp in desirecore/desirecore PR #3112 (commit 62f5398454a8d0d3208d0d222e7e65545bcca16a).
+No other DesireCore application modules or repository history are included or relicensed.
+DesireCore names describe compatibility; this license grants no trademark rights.
+
+Runtime dependencies are installed separately and retain their own licenses:
+@modelcontextprotocol/sdk (MIT), ajv (MIT), ws (MIT).
+OpenAI tunnel-client is an optional, separately installed program and is not redistributed here.
