@@ -4,7 +4,10 @@ import { InstanceManager } from './manager.js'
 import { ToolService } from './tools.js'
 import { startHttp, startStdio } from './server.js'
 
-const HELP = `DesireCore CDP → MCP（开发者调试桥接）
+const HELP = `DesireCore Control（供外部智能体控制 DesireCore 的独立应用）
+
+应用：desirecore-control（独立 HTTP + 本机管理页面）
+      市场分类为应用，不注册到 DesireCore 内部 MCP 服务。
 
 启动：desirecore-cdp-mcp --transport http（独立 HTTP 服务）
       desirecore-cdp-mcp（默认 stdio，供 MCP 客户端启动）
@@ -21,7 +24,7 @@ const HELP = `DesireCore CDP → MCP（开发者调试桥接）
 --port <端口>          MCP HTTP 端口，默认 9333（不是 CDP 端口）
 --token-file <路径>    HTTP token；未指定时读环境变量或自动创建/复用独立的本机 token
 --timeout <毫秒>       总调用截止时间，100–60000，默认 15000
---allow-origin <origin> 精确 Origin 白名单，可重复；默认拒绝带 Origin 的请求
+--allow-origin <origin> 额外的精确 Origin 白名单；默认仅允许本机同源管理页面
 --allow-control        开启输入/重载及任意主世界 JavaScript，拥有完整 IPC 权限
 --help                 显示本帮助
 
@@ -75,6 +78,7 @@ export async function main(argv: string[]): Promise<void> {
       if (!config.tokenFile && process.env.DESIRECORE_MCP_TOKEN === undefined) {
         console.error(`[desirecore-cdp] 认证文件：${defaultTokenFile()}（不输出密钥）`)
       }
+      console.error(`[desirecore-control] 本机管理页面：${http.url.replace(/\/mcp$/, '/')}`)
       console.error(
         `[desirecore-cdp] ${http.url}；独立多实例服务已就绪；控制能力：${config.allowControl ? '已开启（高权限）' : '关闭'}；隧道需另行配置`
       )

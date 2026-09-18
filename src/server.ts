@@ -7,6 +7,8 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import type { BridgeConfig } from './config.js'
 import { ToolService } from './tools.js'
 import { VERSION } from './version.js'
+import { APPLICATION } from './application.js'
+import { APPLICATION_HTML, APPLICATION_JS, APPLICATION_CSS } from './application-ui.js'
 
 export const MAX_REQUEST_BYTES = 128 * 1024
 
@@ -44,7 +46,7 @@ export function authorized(header: string | undefined, token: string): boolean {
 export function trustedRequest(req: IncomingMessage, port: number, origins: string[]): boolean {
   if (![`127.0.0.1:${port}`, `localhost:${port}`].includes(req.headers.host ?? '')) return false
   const origin = req.headers.origin
-  return origin === undefined || origins.includes(origin)
+  return origin === undefined || origin === `http://${req.headers.host}` || origins.includes(origin)
 }
 
 function reply(res: ServerResponse, status: number, message: string): void {
@@ -105,12 +107,76 @@ export async function startHttp(service: ToolService, config: BridgeConfig, toke
       reply(res, 403, 'Host 或 Origin 未被允许')
       return
     }
+    // 无敏感数据的管理页面允许本机打开；实例清单、配置及 MCP 仍必须通过 Bearer 鉴权。
+    const asset =
+      req.url === '/'
+        ? [APPLICATION_HTML, 'text/html']
+        : req.url === '/app.js'
+          ? [APPLICATION_JS, 'text/javascript']
+          : req.url === '/app.css'
+            ? [APPLICATION_CSS, 'text/css']
+            : undefined
+    if (asset) {
+      if (req.method !== 'GET') {
+        reply(res, 405, '只支持 GET')
+        return
+      }
+      res.writeHead(200, {
+        'Content-Type': `${asset[1]}; charset=utf-8`,
+        'Content-Security-Policy':
+          "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'",
+        'X-Content-Type-Options': 'nosniff',
+        'Referrer-Policy': 'no-referrer',
+        'X-Frame-Options': 'DENY',
+      })
+      res.end(asset[0])
+      return
+    }
     const authCount = req.rawHeaders.filter(
       (header, index) => index % 2 === 0 && header.toLowerCase() === 'authorization'
     ).length
     if (authCount !== 1 || !authorized(req.headers.authorization, token)) {
       res.setHeader('WWW-Authenticate', 'Bearer realm="desirecore-cdp"')
       reply(res, 401, '需要有效的本机 MCP Bearer token')
+      return
+    }
+    if (req.url === '/api/overview') {
+      if (req.method !== 'GET') {
+        reply(res, 405, '只支持 GET')
+        return
+      }
+      if (responses.size >= 16) {
+        reply(res, 503, '请求过多，本次未执行')
+        return
+      }
+      responses.add(res)
+      const controller = new AbortController()
+      res.once('close', () => {
+        responses.delete(res)
+        controller.abort()
+      })
+      void service
+        .call('desirecore_list_instances', {}, controller.signal)
+        .then((result) => {
+          if (res.destroyed) return
+          const first = result.content[0]
+          if (result.isError || first?.type !== 'text') {
+            reply(res, 503, '实例检查失败，请查看本机终端')
+            return
+          }
+          const overview: unknown = JSON.parse(first.text)
+          if (typeof overview !== 'object' || overview === null) throw new Error('实例结果格式错误')
+          res.writeHead(200, { 'Content-Type': 'application/json', 'X-Content-Type-Options': 'nosniff' })
+          res.end(
+            JSON.stringify({
+              ...overview,
+              application: APPLICATION,
+              version: VERSION,
+              mcpUrl: `http://127.0.0.1:${port}/mcp`,
+            })
+          )
+        })
+        .catch(() => reply(res, 500, '无法读取应用状态'))
       return
     }
     // 不信任 X-Forwarded-*；隧道必须把请求发到此本机 authority。

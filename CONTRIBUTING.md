@@ -4,4 +4,4 @@ Use Node.js >=22.22.2, then `npm ci`, `npm run typecheck`, `npm test`, `npm run 
 
 Open a feature branch and pull request. Keep protocol/configuration schemas, tests, README.md and README.zh-CN.md aligned. Preserve instance-generation routing, readonly defaults, bounded I/O and no-replay behavior. New side effects require explicit local opt-in.
 
-发布时更新 package.json/version、CHANGELOG 和市场候选元数据，审查依赖锁及 npm pack 清单。推送 vX.Y.Z 标签后由 Release 工作流构建并上传 npm tarball 与 SHA256SUMS；附件不得覆盖。Registry 只保存已发布制品的固定版本和 SHA-256，不复制源代码或使用 latest。不要在 PR 中附带真实 token/用户截图。
+发布时更新 package.json/version、CHANGELOG 和市场候选元数据，审查依赖锁及 npm pack 清单。推送 vX.Y.Z 标签后由 Release 工作流构建并上传 npm tarball 与 SHA256SUMS；附件不得覆盖。市场只能作为应用收录本产品，不能作为内部 MCP 服务；原生应用目录与生命周期支持验收前，不向现有仅支持 Docker 的目录伪装提交。未来应用条目只保存已发布制品的固定版本和 SHA-256，不复制源代码或使用 latest。不要在 PR 中附带真实 token/用户截图。
